@@ -1,4 +1,4 @@
-"""Graffiti Atelier: native TouchDesigner interface and unified contact router."""
+"""5K LED RUN paint studio and unified contact router."""
 import time, math, io, base64, json
 from pathlib import Path
 from datetime import datetime
@@ -6,9 +6,22 @@ from tempfile import NamedTemporaryFile
 from types import SimpleNamespace
 import numpy as np
 A='/atelier'; WALL='/master/version_6_styles'; CAR='/master/version_5_car'
-COLORS=[(1,.10,.22),(1,.35,.07),(1,.77,.12),(.53,.91,.25),(.04,.73,.56),(.06,.68,1),(.24,.36,1),(.62,.28,1),(1,.19,.65),(.95,.94,.88),(.035,.04,.052)]
+def rgb(hex_code):
+    return tuple(int(hex_code[i:i+2], 16) / 255 for i in (0, 2, 4))
+
+# The brandbook's digital Pantone 232 C and 2118 C samples.
+PINK = rgb('E93CAC')
+INDIGO = rgb('343579')
+BACKGROUND = rgb('12112C')
+SHEET = rgb('201E48')
+BUTTON = rgb('353260')
+WHITE = rgb('FFFFFF')
+MUTED = rgb('CECAE7')
+LINE = rgb('565185')
+ACCENT = PINK
+# Keep the original swatch IDs so stored settings and touch targets resolve.
+COLORS=[PINK,(1,.35,.07),INDIGO,rgb('70DCEB'),(.04,.73,.56),rgb('FFCF58'),(.24,.36,1),rgb('A2F1C7'),(1,.19,.65),WHITE,(.035,.04,.052)]
 PUBLIC_COLORS=(0,2,3,5,7,9)
-ACCENT=(.92,.99,.40)
 CALIBRATION_TARGETS=((.13,.36),(.50,.36),(.87,.36),(.13,.135),(.50,.135),(.87,.135))
 TUIO_SETTINGS=('tuio','port','flipx','flipy','swap','homography')
 held={}; contacts={}; sensor_contacts={}
@@ -86,7 +99,7 @@ def sync():
     cc.Size=s['size']*.004;cc.Runs=1 if s['runs'] else 0;cc.Wetroughness=.12;cc.Dryroughness=.42;cc.Drytime=35
     wall().settings()
     appop().op('tuio').par.active=s['tuio'];appop().op('tuio').par.port=s['port']
-    canvas=appop().op('canvas');canvas.par.top=op((CAR if s['mode']=='model' else WALL)+'/out1')
+    appop().op('painted_scene').par.top=op((CAR if s['mode']=='model' else WALL)+'/out1')
     panel=appop().op('settings_panel')
     panel.par.display=s['settings'];appop().op('help_panel').par.display=s['help']
     appop().op('calibration').par.display=calibrating
@@ -94,11 +107,11 @@ def sync():
     selected.extend((panel.op('finish'+str(i)),s['style']==i) for i in range(3))
     selected.append((panel.op('rotate'),bool(cc.Rotate)))
     for node,value in selected:
-        node.par.bgcolorr,node.par.bgcolorg,node.par.bgcolorb=ACCENT if value else (.105,.120,.145)
-        node.par.fontcolorr,node.par.fontcolorg,node.par.fontcolorb=(.031,.035,.043) if value else (.94,.95,.97)
+        node.par.bgcolorr,node.par.bgcolorg,node.par.bgcolorb=ACCENT if value else BUTTON
+        node.par.fontcolorr,node.par.fontcolorg,node.par.fontcolorb=BACKGROUND if value else WHITE
     for i in PUBLIC_COLORS:
         n=appop().op('swatch'+str(i));n.par.text='●' if i==s['color'] else ''
-        n.par.fontcolorr,n.par.fontcolorg,n.par.fontcolorb=(.1,.1,.1) if i in (2,3,9) else (1,1,1)
+        n.par.fontcolorr,n.par.fontcolorg,n.par.fontcolorb=WHITE if COLORS[i]==INDIGO else BACKGROUND
     panel.op('size').par.text='Size '+str(s['size'])
     panel.op('runs').par.text='Drips '+('on' if s['runs'] else 'off')
     panel.op('rotate').par.text='Orbit on' if bool(cc.Rotate) else 'Orbit off'
@@ -139,7 +152,7 @@ def action(name):
     elif name=='save':save_artwork()
     elif name=='project':project.save();status('Project saved · Image, model and editable paint preserved')
     elif name=='image':load_image()
-    elif name=='remove_image':s['image']=False;appop().op('background_switch').par.index=0;status('Brick wall restored')
+    elif name=='remove_image':s['image']=False;appop().op('background_switch').par.index=0;status('5K LED RUN wall restored')
     elif name=='import_model':load_model()
     elif name=='restore_model':restore_model()
     elif name=='rotate':release_all();car().ctrl().Rotate=not bool(car().ctrl().Rotate)
@@ -183,8 +196,8 @@ def action(name):
 
 def save_artwork():
     folder=Path(project.folder)/'Exports';folder.mkdir(exist_ok=True)
-    stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f');m=state()['mode'];name=folder/(m+'_'+stamp)
-    source=op((CAR if m=='model' else WALL)+'/out1');source.cook(force=True);source.save(str(name)+'.png')
+    stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f');m=state()['mode'];name=folder/('5K_LED_RUN_'+m+'_'+stamp)
+    source=appop().op('event_export');source.cook(force=True);source.save(str(name)+'.png')
     e=(car() if m=='model' else wall()).engine
     values={k:getattr(e,k) for k in ['ink','mass','glow']}
     if hasattr(e,'wet'):values['wet']=e.wet
@@ -246,10 +259,10 @@ def show_calibration_step(detail=None):
     panel.op('detail').par.text=detail
     for index in range(len(CALIBRATION_TARGETS)):
         point=panel.op(f'point{index}')
-        color=ACCENT if index==step else (.105,.120,.145)
+        color=ACCENT if index==step else BUTTON
         point.par.bgcolorr,point.par.bgcolorg,point.par.bgcolorb=color
         point.par.fontcolorr,point.par.fontcolorg,point.par.fontcolorb=(
-            (.031,.035,.043) if index==step else (.55,.70,.63) if index<step else (.56,.61,.69)
+            BACKGROUND if index==step else COLORS[7] if index<step else MUTED
         )
         point.par.text='✓' if index<step else '+'
 
@@ -355,7 +368,10 @@ def hit(u,v):
         name=n.storage.get('action')
         if name and bool(n.par.display) and float(n.par.x)<=x<float(n.par.x)+n.width and float(n.par.y)<=y<float(n.par.y)+n.height:
             return name
-    if parent==appop() and 0<=u<1 and 0<=v<1:return 'canvas'
+    if parent==appop():
+        canvas=parent.op('canvas')
+        if float(canvas.par.x)<=x<float(canvas.par.x)+canvas.width and float(canvas.par.y)<=y<float(canvas.par.y)+canvas.height:
+            return 'canvas'
     return None
 
 def native(event,down,allow_start=True):

@@ -1,4 +1,18 @@
-GRAFFITI ATELIER — SOFTWARE VERIFICATION
+5K LED RUN — EVENT EDITION
+19 November 2026 | TouchDesigner 2025.33230 | Windows
+
+The release project reopened in fullscreen from a folder containing only the
+.toe. Both paint surfaces started clean, with neon pink selected on the wall.
+The event wall and logo images loaded from the project. The /atelier network
+reported zero errors and warnings.
+
+Verified all six swatches, the unpaintable toolbar, wall strokes, clear and
+undo, custom wall import and restore, and branded wall and 3D PNG exports.
+Verified local UDP TUIO packets created two separate strokes and released both
+contacts. Checked the display layout at 1440 x 900 and 1920 x 1080.
+Physical LiDAR alignment and the event edition's macOS launcher remain untested.
+
+GRAFFITI ATELIER — ORIGINAL SOFTWARE VERIFICATION
 18 November 2026 | TouchDesigner 2025.33230 | macOS
 
 Public display and six-point calibration update:

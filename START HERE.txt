@@ -1,12 +1,13 @@
-GRAFFITI ATELIER
+5K LED RUN | LED PAINT STUDIO
 
-Open Graffiti Atelier.toe in TouchDesigner, or double-click the launch shortcut.
+Open 5K LED RUN.toe in TouchDesigner. On Windows, double-click Launch 5K LED RUN.bat.
+On macOS, use Launch 5K LED RUN.command.
 The app opens fullscreen. It needs TouchDesigner installed and licensed.
-Built and tested on macOS with TouchDesigner 2025.33230.
+The event edition uses TouchDesigner 2025.33230.
 
 PAINT
-The app opens fullscreen on the brick wall. Pick one of six colors
-along the bottom and drag to paint. Holding a contact builds coverage.
+The app opens fullscreen on the branded digital game wall with neon pink selected.
+Pick one of six colors along the bottom and drag to paint. Hold to build coverage.
 Select Clear All at the bottom right to reset the canvas. Press Z to undo.
 The bundled 3D car is still available in Settings.
 
@@ -14,7 +15,7 @@ OPERATOR SETTINGS
 Press Tab to open the hidden Settings panel. Choose Wall or 3D object,
 adjust brush size, switch spray, wet paint, neon, or drips, adjust lighting,
 import a surface, or set up LiDAR. Select Done or press Esc to return.
-Select Exit App in Settings to close Graffiti Atelier.
+Select Exit App in Settings to close 5K LED RUN.
 Spray gives grainy coverage. Wet paint builds a raised glossy surface.
 Neon has its own luminous layer and bloom. Finishes can coexist.
 Orbit is available in Settings for 3D objects. Turn it off before painting.
@@ -47,7 +48,7 @@ Mouse, native OS touch and TUIO can drive the app. Undo is in Settings.
 CUSTOM IMAGES AND MODELS
 The image is fitted to the 1024 x 640 wall. Saving the project embeds it.
 Loading an image keeps your existing paint; clear the surface if desired.
-Use BRICK WALL to return to the default surface.
+Use Restore event wall to return to the 5K LED RUN artwork.
 
 Replacement models must be OBJ, with unique, non-overlapping UV islands packed
 in 0–1, a Y-up orientation, and at most 150,000 triangles. The model is centered
@@ -72,7 +73,7 @@ SLAMTEC RPLIDAR S3 / FRAMEGRABBER.NET
    targets. Both rows are below the midpoint. Use Cancel or Esc to exit.
 4. After the sixth lift the app applies and saves the alignment automatically.
    Return to the canvas and check touch alignment across the active area.
-   Keep FrameGrabber scanning while Graffiti Atelier is running so it keeps
+   Keep FrameGrabber scanning while 5K LED RUN is running so it keeps
    sending TUIO touches.
 
 FrameGrabber handles coarse touch-area setup. The app uses the six points to
@@ -94,8 +95,8 @@ tracker frames.
 
 SAVE AND EXPORT
 EXPORT / S writes to the Exports folder beside the open project:
-  Wall: rendered PNG + editable .npz paint arrays
-  Model: rendered PNG + paint texture PNG + editable .npz paint arrays
+  Wall: branded PNG + editable .npz paint arrays
+  Model: branded PNG + paint texture PNG + editable .npz paint arrays
 The .npz files are source data for further work, not a gallery import format.
 
 Save project / Ctrl+S / Cmd+S embeds both surfaces' paint, the current wall
@@ -110,6 +111,7 @@ EDITING
 /master/version_5_car holds the embedded car, surface picking, paint atlas,
 material, studio lights and render.
 /master/STYLE_PRESETS controls shared dose, emission, relief and runs.
+Source/Brand contains the game wall and event logos embedded in the project.
 Source contains readable copies of the embedded scripts, the wall shader
 and the TouchDesigner interface build script.
 The application runs from the .toe without the Source folder.
@@ -121,4 +123,4 @@ lighting and neon are real-time visual approximations. Fine detail is limited
 by the paint texture sizes. Performance depends on model complexity and GPU.
 
 VERIFICATION
-See Validation.txt for the completed software checks and hardware limitations.
+Validation.txt records the event edition checks and the original app checks.

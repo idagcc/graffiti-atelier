@@ -6,14 +6,13 @@ app = op('/atelier')
 app.op('runtime').text = Path(source_dir, 'runtime.py').read_text(encoding='utf-8')
 runtime = app.op('runtime').module
 
-BACKGROUND = (.031, .035, .043)
-SHEET = (.052, .060, .074)
-BUTTON = (.105, .120, .145)
-LINE = (.15, .17, .21)
-WHITE = (.94, .95, .97)
-MUTED = (.63, .68, .75)
+BACKGROUND = runtime.BACKGROUND
+SHEET = runtime.SHEET
+BUTTON = runtime.BUTTON
+LINE = runtime.LINE
+WHITE = runtime.WHITE
+MUTED = runtime.MUTED
 ACCENT = runtime.ACCENT
-WALL_COLOR_SOURCE = 'brick_wall.frag'
 CLEAR_HELP = ('Clear All / Z', 'Clear the canvas. Press Z to undo.')
 EXIT_HELP = ('Tab / Ctrl+Q', 'Open Settings or exit the app (Cmd+Q on Mac)')
 
@@ -30,16 +29,16 @@ def fill(node, color, alpha=1):
     node.par.bgalpha = alpha
 
 def block(parent, name, bounds, color, layer=0, alpha=1):
-    node = rect(parent.create(containerCOMP, name), *bounds)
+    node = rect(parent.op(name) or parent.create(containerCOMP, name), *bounds)
     fill(node, color, alpha)
     node.par.layer = layer
     return node
 
 def text(parent, name, value, bounds, size=16, color=WHITE, align='left',
          background=None, action=None, layer=2):
-    node = rect(parent.create(textCOMP, name), *bounds)
+    node = rect(parent.op(name) or parent.create(textCOMP, name), *bounds)
     node.par.text = value
-    node.par.font = 'DM Sans'
+    node.par.font = 'Arial'
     node.par.fontsize.expr = f'{size}*min(op("/atelier").width/1280,op("/atelier").height/800)'
     node.par.alignx = align
     node.par.scaletofit = 'onlyshrink'
@@ -60,52 +59,66 @@ def modal(name, color, alpha=1):
     node.par.display = False
     return node
 
+def embed_art(parent, name, filename, y):
+    art = parent.op(name) or parent.create(moviefileinTOP, name)
+    art.nodeX, art.nodeY = -360, y
+    art.viewer = True
+    art.lock = False
+    art.par.file = str(Path(source_dir, 'Brand', filename).resolve())
+    art.par.reloadpulse.pulse()
+    art.cook(force=True)
+    if art.errors() or art.width <= 1:
+        raise RuntimeError('Could not embed ' + filename)
+    art.lock = True
+    art.par.file = 'Source/Brand/' + filename
+    return art
+
 def install_wall_features(parent, source_dir):
-    brick = parent.op('brick_wall')
-    if brick is None:
-        brick = parent.create(glslTOP, 'brick_wall')
-        brick.nodeX = -360
-        brick.nodeY = 170
-    brick.viewer = True
-    brick.par.outputresolution = 'custom'
-    brick.par.resolutionw, brick.par.resolutionh = 1024, 640
-    brick.inputConnectors[0].connect(parent.op('concrete'))
-    brick.par.pixeldat.eval().text = Path(source_dir, WALL_COLOR_SOURCE).read_text(encoding='utf-8')
-    parent.op('background_switch').inputConnectors[0].connect(brick)
+    wall = embed_art(parent, 'event_wall', 'Digital game wall.png', 300)
+    parent.op('background_switch').inputConnectors[0].connect(wall)
+    logos = embed_art(parent, 'event_logos', 'Event logos.png', 450)
+    scene = parent.op('painted_scene') or parent.create(selectTOP, 'painted_scene')
+    scene.nodeX, scene.nodeY = -360, 590
+    scene.par.top = op(runtime.WALL + '/out1')
+    # Fit the marks independently for the physical display and the native export.
+    shader = parent.op('logo_shader') or parent.create(textDAT, 'logo_shader')
+    shader.text = Path(source_dir, 'event_logos.frag').read_text(encoding='utf-8')
+    shader.nodeX, shader.nodeY = -360, 740
+    for index, name in enumerate(('event_display', 'event_export')):
+        result = parent.op(name) or parent.create(glslTOP, name)
+        result.nodeX, result.nodeY = -100, 590 - 150 * index
+        result.inputConnectors[0].connect(scene)
+        result.inputConnectors[1].connect(logos)
+        result.par.pixeldat = shader
+        result.viewer = True
+    display = parent.op('event_display')
+    display.par.outputresolution = 'custom'
+    display.par.resolutionw.expr = 'max(1, round(op("canvas").width * min(1, 1280 / max(1, op("canvas").width, op("canvas").height))))'
+    display.par.resolutionh.expr = 'max(1, round(me.par.resolutionw * op("canvas").height / max(1, op("canvas").width)))'
+    parent.op('canvas').par.top = display
 
     settings = parent.op('settings_panel')
     controls = (
-        (parent, 'clear_all', 'Clear All', (1090, 15, 158, 52), 'clear', (.24, .105, .13)),
+        (parent, 'clear_all', 'Clear all', (1090, 17, 158, 48), 'clear', BUTTON),
         (settings, 'exit_app', 'Exit App', (382, 89, 143, 43), 'exit_app', BUTTON),
     )
     for panel, name, label, bounds, action, color in controls:
-        if panel.op(name) is None:
-            node = button(panel, name, label, bounds, action, background=color, layer=3)
-            node.viewer = True
-            node.nodeX, node.nodeY = 390, 170
-            node.par.resizecomp = node
-            node.par.repocomp = node
-            node.resetNodeSize()
+        node = button(panel, name, label, bounds, action, background=color, layer=3)
+        node.viewer = True
+        node.nodeX, node.nodeY = 390, 170
+        node.par.resizecomp = node
+        node.par.repocomp = node
+        node.resetNodeSize()
 
-    settings.op('remove_image').par.text = 'Use brick wall'
+    settings.op('remove_image').par.text = 'Restore event wall'
     help_panel = parent.op('help_panel')
     for index, (key, description) in ((5, CLEAR_HELP), (7, EXIT_HELP)):
         help_panel.op(f'key{index}').par.text = key
         help_panel.op(f'instruction{index}').par.text = description
 
-# Keep the canvas operator so the native-touch receiver remains attached to it.
-panels = [child for child in app.children
-          if child.family == 'COMP' and child.name not in ('canvas', 'window')]
-for child in panels:
-    child.destroy()
-for child in app.children:
-    if child.family == 'DAT' and child.name.endswith('_callbacks') and child.name not in (
-        'native_touch_callbacks', 'keyboard_callbacks', 'tuio_callbacks',
-    ):
-        child.destroy()
-
 fill(app, BACKGROUND)
-canvas = rect(app.op('canvas'), 0, 0, 1280, 800)
+app.op('window').par.title = '5K LED RUN | Graffiti wall'
+canvas = rect(app.op('canvas'), 0, 82, 1280, 718)
 canvas.par.topfill = 'off'
 canvas.par.layer = 0
 app.op('native_touch_callbacks').text = """def onDown(dat,event):op('/atelier/runtime').module.native(event,True)
@@ -113,16 +126,19 @@ def onMove(dat,event):op('/atelier/runtime').module.native(event,True,allow_star
 def onUp(dat,event):op('/atelier/runtime').module.native(event,False)
 def onHover(dat,event):pass
 """
+text(app, 'studio_name', 'LED paint studio', (32, 36, 348, 34), 24).par.bold = True
+text(app, 'paint_hint', 'Choose a color and drag to paint.', (32, 12, 358, 22), 15, MUTED)
+block(app, 'toolbar_edge', (0, 80, 1280, 2), runtime.INDIGO, layer=1)
 for position, index in enumerate(runtime.PUBLIC_COLORS):
     color = runtime.COLORS[index]
     name = f'swatch{index}'
-    swatch = text(app, name, '', (422+74*position, 15, 66, 52), 23, WHITE, 'center',
+    swatch = text(app, name, '', (422+74*position, 17, 66, 48), 23, WHITE, 'center',
                   color, name, layer=3)
 
 settings = modal('settings_panel', BACKGROUND, alpha=.72)
 block(settings, 'sheet', (0, 0, 1280, 596), SHEET)
 block(settings, 'sheet_edge', (0, 595, 1280, 1), LINE, layer=1)
-text(settings, 'title', 'Settings', (32, 526, 380, 48), 34)
+text(settings, 'title', '5K LED RUN  /  Settings', (32, 526, 780, 48), 34).par.bold = True
 button(settings, 'help', 'Help', (1002, 531, 108, 42))
 button(settings, 'close', 'Done', (1120, 531, 128, 42), 'close_settings', ACCENT, BACKGROUND)
 block(settings, 'rule', (32, 509, 1216, 1), LINE, layer=1)
@@ -139,7 +155,7 @@ text(settings, 'size', 'Size 20', (372, 354, 82, 43), 14, WHITE, 'center', BACKG
 button(settings, 'larger', '+', (454, 354, 43, 43))
 button(settings, 'runs', 'Drips on', (505, 354, 105, 43))
 button(settings, 'image', 'Load wall image', (32, 303, 280, 43))
-button(settings, 'remove_image', 'Use brick wall', (320, 303, 290, 43))
+button(settings, 'remove_image', 'Restore event wall', (320, 303, 290, 43))
 button(settings, 'import_model', 'Load 3D model', (32, 252, 280, 43))
 button(settings, 'restore_model', 'Restore original car', (320, 252, 290, 43))
 button(settings, 'light', 'Soft studio light', (32, 201, 191, 43))
@@ -169,7 +185,7 @@ text(settings, 'status', '', (32, 25, 1216, 38), 15, ACCENT)
 
 help_panel = modal('help_panel', BACKGROUND, alpha=.78)
 block(help_panel, 'sheet', (0, 0, 1280, 530), SHEET)
-text(help_panel, 'title', 'How to paint', (32, 452, 600, 54), 34)
+text(help_panel, 'title', 'How to paint', (32, 452, 600, 54), 34).par.bold = True
 button(help_panel, 'close', 'Done', (1120, 459, 128, 42), 'close_help', ACCENT, BACKGROUND)
 instructions = (
     ('Paint', 'Choose a color. Drag to paint or hold to build up color.'),
@@ -203,6 +219,6 @@ for index, (u, v) in enumerate(runtime.CALIBRATION_TARGETS):
 
 # Match the 3D render's aspect to the canvas while preserving render picking.
 render = op(runtime.CAR+'/CAR_RENDER')
-render.par.resolutionw.expr = 'max(1,min(1600,round(640*op("/atelier/canvas").width/max(1,op("/atelier/canvas").height))))'
+render.par.resolutionw.expr = 'max(1,min(1280,round(640*op("/atelier/canvas").width/max(1,op("/atelier/canvas").height))))'
 install_wall_features(app, source_dir)
 runtime.sync()
