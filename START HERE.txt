@@ -1,0 +1,124 @@
+GRAFFITI ATELIER
+
+Open Graffiti Atelier.toe in TouchDesigner, or double-click the launch shortcut.
+The app opens fullscreen. It needs TouchDesigner installed and licensed.
+Built and tested on macOS with TouchDesigner 2025.33230.
+
+PAINT
+The app opens fullscreen on the brick wall. Pick one of six colors
+along the bottom and drag to paint. Holding a contact builds coverage.
+Select Clear All at the bottom right to reset the canvas. Press Z to undo.
+The bundled 3D car is still available in Settings.
+
+OPERATOR SETTINGS
+Press Tab to open the hidden Settings panel. Choose Wall or 3D object,
+adjust brush size, switch spray, wet paint, neon, or drips, adjust lighting,
+import a surface, or set up LiDAR. Select Done or press Esc to return.
+Select Exit App in Settings to close Graffiti Atelier.
+Spray gives grainy coverage. Wet paint builds a raised glossy surface.
+Neon has its own luminous layer and bloom. Finishes can coexist.
+Orbit is available in Settings for 3D objects. Turn it off before painting.
+
+SHORTCUTS
+Tab          Customize the surface, lighting and LiDAR input
+I            Choose a wall image (PNG, JPEG, TIFF)
+M            Choose a replacement 3D model (UV-unwrapped OBJ)
+W / V        Wall / 3D object
+1 / 2 / 3    Spray / wet paint / neon
+[ / ]        Smaller / larger brush
+D            Drips on / off
+R            Toggle paint / orbit mode in 3D
+Left/Right   Turn the model
+Up/Down      Zoom in / out
+Z            Undo (up to six strokes in this session)
+Delete       Clear the active surface (can be undone)
+S            Export PNG and editable paint data
+Ctrl+S       Save a numbered TouchDesigner project revision
+Cmd+S        Same on macOS
+Ctrl+Q       Exit the app from the canvas or Settings
+Cmd+Q        Same on macOS
+F            Fullscreen
+Esc          Close settings/help, cancel calibration, or return to a window
+F1           Help
+
+Click the painting window if keyboard shortcuts do not have focus.
+Mouse, native OS touch and TUIO can drive the app. Undo is in Settings.
+
+CUSTOM IMAGES AND MODELS
+The image is fitted to the 1024 x 640 wall. Saving the project embeds it.
+Loading an image keeps your existing paint; clear the surface if desired.
+Use BRICK WALL to return to the default surface.
+
+Replacement models must be OBJ, with unique, non-overlapping UV islands packed
+in 0–1, a Y-up orientation, and at most 150,000 triangles. The model is centered
+and fitted automatically, then embedded in the project when saved. Its entire
+mesh becomes paintable. Materials from the OBJ are replaced by the paint
+material. Importing or restoring a model starts a fresh model paint surface.
+RESTORE ORIGINAL CAR returns to the bundled, separated car.
+
+SLAMTEC RPLIDAR S3 / FRAMEGRABBER.NET
+1. In FrameGrabber.NET, connect the S3 and set Screen Setting to the full
+   interactive display. Set the physical Width, Height and Bias for your
+   installation, along with the display resolution and axis orientation.
+   Start the scan and confirm FrameGrabber can see touches across the screen.
+2. In FrameGrabber.NET, disable mouse emulation and enable MERGING and TUIO
+   under Multitouch. Match the app's UDP port (3333 by default, with 3334 and
+   3335 also available). Save Config and restart FrameGrabber if you changed
+   its port. When running both apps on the same PC, use local TUIO. When using
+   separate PCs, ensure TUIO UDP reaches the computer running TouchDesigner.
+3. On the final display, press Tab and check the TUIO activity label
+   while touching the display. Select Calibrate · 6 points. Touch the center
+   of the highlighted '+' with one finger and lift. Repeat for all six
+   targets. Both rows are below the midpoint. Use Cancel or Esc to exit.
+4. After the sixth lift the app applies and saves the alignment automatically.
+   Return to the canvas and check touch alignment across the active area.
+   Keep FrameGrabber scanning while Graffiti Atelier is running so it keeps
+   sending TUIO touches.
+
+FrameGrabber handles coarse touch-area setup. The app uses the six points to
+fit scale, offset, rotation and shear across the display. Calibration targets
+sample the lower part, so upper-area alignment depends on the initial setup.
+Flip Y starts on for standard TUIO top-left coordinates. Changing a flip or
+Swap X/Y clears the learned alignment. Reset calibration uses the configured
+axis settings directly. The app stores the TUIO setup and alignment in
+LiDAR Calibration.json next to the project.
+
+SLAMTEC FrameGrabber.NET toolkit and documentation:
+https://wiki.slamtec.com/pages/viewpage.action?pageId=128090141
+
+A TUIO contact stays attached to its initial target, so a swatch tap cannot
+become a paint stroke. Up to ten simultaneous paint contacts are accepted.
+Contacts stop on release. Lost sensor contacts expire after 1.5 seconds
+without updates. Stationary contacts should continue to be included in
+tracker frames.
+
+SAVE AND EXPORT
+EXPORT / S writes to the Exports folder beside the open project:
+  Wall: rendered PNG + editable .npz paint arrays
+  Model: rendered PNG + paint texture PNG + editable .npz paint arrays
+The .npz files are source data for further work, not a gallery import format.
+
+Save project / Ctrl+S / Cmd+S embeds both surfaces' paint, the current wall
+image, replacement model, and current settings into a numbered .toe revision.
+Open that latest revision to continue where you left off. The adjacent LiDAR
+Calibration.json takes priority for sensor settings on this installation.
+Undo history and moving droplets restart when reopening.
+
+EDITING
+/atelier holds the new interface, contact router, background and input nodes.
+/master/version_6_styles holds wall paint, height/wetness lighting and bloom.
+/master/version_5_car holds the embedded car, surface picking, paint atlas,
+material, studio lights and render.
+/master/STYLE_PRESETS controls shared dose, emission, relief and runs.
+Source contains readable copies of the embedded scripts, the wall shader
+and the TouchDesigner interface build script.
+The application runs from the .toe without the Source folder.
+
+PROCESSING
+Wall paint: 1024 x 640. Model paint atlas: 1024 x 1024.
+Fullscreen scales the interface and canvas to the display. Wetness, relief,
+lighting and neon are real-time visual approximations. Fine detail is limited
+by the paint texture sizes. Performance depends on model complexity and GPU.
+
+VERIFICATION
+See Validation.txt for the completed software checks and hardware limitations.

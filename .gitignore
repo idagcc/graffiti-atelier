@@ -1,0 +1,6 @@
+/Backup/
+/Exports/
+/*.toe.bkp*
+/*.[0-9]*.toe
+/LiDAR Calibration.json
+__pycache__/

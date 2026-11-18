@@ -1,0 +1,40 @@
+GRAFFITI ATELIER — SOFTWARE VERIFICATION
+18 November 2026 | TouchDesigner 2025.33230 | macOS
+
+Public display and six-point calibration update:
+- The packaged project reopened in fullscreen Perform Mode on the 3D car.
+- Exactly six swatches are exposed on the full-size painting canvas.
+- Settings are hidden at launch and block painting while open.
+- Actual local UDP TUIO 1.1 packets selected a swatch and painted the car.
+- Dragging from a swatch onto the car did not leave a stroke.
+- Six targets below the screen midpoint captured one TUIO touch and release
+  each. The launch touch, multiple simultaneous touches, and duplicate
+  points did not advance calibration.
+- The fitted mapping recovered a known offset, scale, rotation and shear.
+- Calibrated TUIO routed to a swatch and painted the upper wall.
+- The app saved and reloaded the calibration profile. Cancel and a failed
+  recalibration both preserved the last successful mapping.
+
+Previously verified paint and project features:
+- Native mouse painting, holding for paint buildup, and continuous dragging.
+- Keyboard finish switching; image and model file dialogs through I and M.
+- Spray, wet paint and neon accumulation; separate neon emission.
+- Wet surface highlights, gravity runs, and coexistence of finishes.
+- Clear, undo, and undoing a clear operation.
+- PNG and editable paint exports.
+- Imported image embedded in the project.
+- Import and embedding of a UV-mapped cube OBJ; atlas construction.
+- Render picking and painting on the imported model.
+- Restoring the original car; importing after saved paint is present.
+- Actual local UDP TUIO 1.1 /tuio/2Dcur bundles with two cursor IDs.
+- TUIO release removes contacts; separate cursor strokes stay separate.
+- TUIO selection of a bottom swatch.
+- A swatch contact moved onto the canvas does not become a paint stroke.
+- Lost TUIO contact expires after 1.5 seconds.
+- Save/reopen restored wall ink, relief and glow with exact array sums.
+- Reopened wetness remained present and continued drying.
+- Final single-instance receiver and node error checks.
+
+Hardware validation pending for the SLAMTEC RPLIDAR S3 and FrameGrabber.NET,
+physical multi-touch, and Windows. Use one app instance per receiving UDP
+port.
