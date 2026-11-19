@@ -20,7 +20,14 @@ WHITE = rgb('FFFFFF')
 MUTED = rgb('CECAE7')
 LINE = rgb('565185')
 ACCENT = PINK
-PAINT_COLORS=(PINK,INDIGO)
+PAINT_COLORS = (
+    PINK,
+    INDIGO,
+    rgb('93E37C'),  # Lime from the cover typography.
+    rgb('009AEC'),  # Electric blue from the start/finish arch lighting.
+    rgb('FAD032'),  # Gold from the registration graphics.
+    rgb('7333FB'),  # Violet from the gaming station lighting.
+)
 ARTWORKS=(1,2,3)
 ARTWORK_ASPECT=3/2
 CALIBRATION_TARGETS=((.13,.36),(.50,.36),(.87,.36),(.13,.135),(.50,.135),(.87,.135))

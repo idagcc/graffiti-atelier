@@ -7,9 +7,10 @@ The event edition uses TouchDesigner 2025.33230.
 
 PAINT
 The app opens fullscreen on Graffiti Artwork 1. Touch and drag to paint.
-Each new touch randomly picks Pantone 232 C (pink) or Pantone 2118 C
-(indigo). The touch keeps that color until you lift, including when
-several people paint at once. Hold to build coverage.
+Each new touch randomly picks one of six colors from the brand book:
+Pantone 232 C pink, Pantone 2118 C indigo, lime, electric blue, gold, or
+violet. The touch keeps that color until you lift, including when several
+people paint at once. Hold to build coverage.
 On the three graffiti artworks, paint stays in the enclosed white areas.
 Select Clear All at the bottom right to reset the canvas. Press Z to undo.
 The bundled 3D car is still available in Settings.

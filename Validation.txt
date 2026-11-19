@@ -8,6 +8,8 @@ two simultaneous TUIO contacts sent over local UDP. Exported artwork
 matched the original pixels outside the paint mask and on the dark outlines.
 Verified clear and undo, separate paintings across artwork switches, paint
 save and reopen, PNG and editable export, and rendering the original car.
+Verified all six palette colors with six simultaneous contacts. Moving a
+contact kept its assigned color and touching again made a fresh selection.
 Physical touchscreen and LiDAR testing remain pending for this edition.
 
 5K LED RUN — EVENT EDITION
