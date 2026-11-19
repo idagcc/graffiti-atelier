@@ -74,22 +74,54 @@ def embed_art(parent, name, filename, y):
     return art
 
 def install_wall_features(parent, source_dir):
+    op(runtime.WALL + '/save_paint_state').text = '''def onProjectPreSave():
+    parent().op('paint_engine').module.save_surfaces()
+'''
     wall = embed_art(parent, 'event_wall', 'Digital game wall.png', 300)
-    parent.op('background_switch').inputConnectors[0].connect(wall)
+    backgrounds = parent.op('background_switch')
+    backgrounds.inputConnectors[0].connect(wall)
+    paint_base = parent.op('artwork_paint_base') or parent.create(constantTOP, 'artwork_paint_base')
+    paint_base.nodeX, paint_base.nodeY = -560, 300
+    paint_base.par.colorr = paint_base.par.colorg = paint_base.par.colorb = 0
+    paint_base.viewer = True
+    backgrounds.inputConnectors[2].connect(paint_base)
+
+    artwork = parent.op('artwork_switch') or parent.create(switchTOP, 'artwork_switch')
+    masks = parent.op('artwork_mask_switch') or parent.create(switchTOP, 'artwork_mask_switch')
+    for node, y in ((artwork, 1020), (masks, 860)):
+        node.nodeX, node.nodeY = -600, y
+        node.viewer = True
+    for index in runtime.ARTWORKS:
+        image = embed_art(parent, f'artwork{index}', f'Graffiti {index}.png', 1120 + 160 * index)
+        mask = embed_art(parent, f'artwork_mask{index}', f'Graffiti {index} mask.png', 1120 + 160 * index)
+        image.nodeX, mask.nodeX = -950, -780
+        artwork.inputConnectors[index-1].connect(image)
+        masks.inputConnectors[index-1].connect(mask)
+
     logos = embed_art(parent, 'event_logos', 'Event logos.png', 450)
     scene = parent.op('painted_scene') or parent.create(selectTOP, 'painted_scene')
     scene.nodeX, scene.nodeY = -360, 590
     scene.par.top = op(runtime.WALL + '/out1')
+    ink = parent.op('artwork_ink') or parent.create(selectTOP, 'artwork_ink')
+    ink.nodeX, ink.nodeY = -360, 860
+    ink.par.top = op(runtime.WALL + '/paint_color')
+    ink.viewer = True
     # Fit the marks independently for the physical display and the native export.
     shader = parent.op('logo_shader') or parent.create(textDAT, 'logo_shader')
     shader.text = Path(source_dir, 'event_logos.frag').read_text(encoding='utf-8')
     shader.nodeX, shader.nodeY = -360, 740
     for index, name in enumerate(('event_display', 'event_export')):
-        result = parent.op(name) or parent.create(glslTOP, name)
+        result = parent.op(name) or parent.create(glslmultiTOP, name)
+        if not isinstance(result, glslmultiTOP):
+            result = result.changeType(glslmultiTOP)
         result.nodeX, result.nodeY = -100, 590 - 150 * index
         result.inputConnectors[0].connect(scene)
         result.inputConnectors[1].connect(logos)
+        result.inputConnectors[2].connect(artwork)
+        result.inputConnectors[3].connect(masks)
+        result.inputConnectors[4].connect(ink)
         result.par.pixeldat = shader
+        result.par.vec0name = 'uArtwork'
         result.viewer = True
     display = parent.op('event_display')
     display.par.outputresolution = 'custom'
@@ -110,7 +142,6 @@ def install_wall_features(parent, source_dir):
         node.par.repocomp = node
         node.resetNodeSize()
 
-    settings.op('remove_image').par.text = 'Restore event wall'
     help_panel = parent.op('help_panel')
     for index, (key, description) in ((5, CLEAR_HELP), (7, EXIT_HELP)):
         help_panel.op(f'key{index}').par.text = key
@@ -127,13 +158,12 @@ def onUp(dat,event):op('/atelier/runtime').module.native(event,False)
 def onHover(dat,event):pass
 """
 text(app, 'studio_name', 'LED paint studio', (32, 36, 348, 34), 24).par.bold = True
-text(app, 'paint_hint', 'Choose a color and drag to paint.', (32, 12, 358, 22), 15, MUTED)
+text(app, 'paint_hint', 'Touch and drag to paint. Every touch picks a color.', (32, 12, 520, 22), 15, MUTED)
 block(app, 'toolbar_edge', (0, 80, 1280, 2), runtime.INDIGO, layer=1)
-for position, index in enumerate(runtime.PUBLIC_COLORS):
-    color = runtime.COLORS[index]
-    name = f'swatch{index}'
-    swatch = text(app, name, '', (422+74*position, 17, 66, 48), 23, WHITE, 'center',
-                  color, name, layer=3)
+for node in app.children:
+    if node.name.startswith('swatch') and node.storage.get('action'):
+        node.par.display = False
+        node.storage.pop('action')
 
 settings = modal('settings_panel', BACKGROUND, alpha=.72)
 block(settings, 'sheet', (0, 0, 1280, 596), SHEET)
@@ -155,7 +185,17 @@ text(settings, 'size', 'Size 20', (372, 354, 82, 43), 14, WHITE, 'center', BACKG
 button(settings, 'larger', '+', (454, 354, 43, 43))
 button(settings, 'runs', 'Drips on', (505, 354, 105, 43))
 button(settings, 'image', 'Load wall image', (32, 303, 280, 43))
-button(settings, 'remove_image', 'Restore event wall', (320, 303, 290, 43))
+legacy = settings.op('remove_image')
+if legacy:
+    legacy.par.display = False
+    legacy.storage.pop('action', None)
+for index in runtime.ARTWORKS:
+    node = button(settings, f'artwork{index}', f'Artwork {index}', (320+98*(index-1), 303, 94, 43), layer=3)
+    node.viewer = True
+    node.nodeX, node.nodeY = 580, 170-115*(index-1)
+    node.par.resizecomp = node
+    node.par.repocomp = node
+    node.resetNodeSize()
 button(settings, 'import_model', 'Load 3D model', (32, 252, 280, 43))
 button(settings, 'restore_model', 'Restore original car', (320, 252, 290, 43))
 button(settings, 'light', 'Soft studio light', (32, 201, 191, 43))
@@ -188,7 +228,7 @@ block(help_panel, 'sheet', (0, 0, 1280, 530), SHEET)
 text(help_panel, 'title', 'How to paint', (32, 452, 600, 54), 34).par.bold = True
 button(help_panel, 'close', 'Done', (1120, 459, 128, 42), 'close_help', ACCENT, BACKGROUND)
 instructions = (
-    ('Paint', 'Choose a color. Drag to paint or hold to build up color.'),
+    ('Paint', 'Touch for a random color. Drag to paint or hold to build up color.'),
     ('1 / 2 / 3', 'Spray, wet paint or neon'),
     ('W / V', 'Wall or 3D object'),
     ('[ / ]', 'Decrease or increase brush size'),

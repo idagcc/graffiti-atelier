@@ -1,3 +1,15 @@
+5K LED RUN — GRAFFITI ARTWORK EDITION
+19 November 2026 | TouchDesigner 2025.33230 | Windows
+
+Opened an isolated verification copy with no external artwork files.
+All three embedded designs opened at their original 3:2 aspect ratio.
+Verified independent colors and release on the native event route and on
+two simultaneous TUIO contacts sent over local UDP. Exported artwork
+matched the original pixels outside the paint mask and on the dark outlines.
+Verified clear and undo, separate paintings across artwork switches, paint
+save and reopen, PNG and editable export, and rendering the original car.
+Physical touchscreen and LiDAR testing remain pending for this edition.
+
 5K LED RUN — EVENT EDITION
 19 November 2026 | TouchDesigner 2025.33230 | Windows
 

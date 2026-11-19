@@ -159,26 +159,27 @@ def pick(u,v):
     event=op(V+'/surface_pick').pick(u,v)
     if not event.pickOp or event.pickOp.parent().name!='car_body':return None
     return np.array([event.pos.x,event.pos.y,event.pos.z],dtype=np.float32),np.array([event.normal.x,event.normal.y,event.normal.z],dtype=np.float32)
-def paint_at(u,v,dt,previous=None):
+def paint_at(u,v,dt,previous=None,color=None):
     hit=pick(u,v)
     if hit is None:return None
-    p,n=hit;c=ctrl();r=float(c.Size);color=[float(getattr(c,'Color'+s)) for s in 'rgb'];dose=min(.7,max(.07,dt*11))*float(c.Flow)
+    p,n=hit;c=ctrl();r=float(c.Size);dose=min(.7,max(.07,dt*11))*float(c.Flow)
+    if color is None:color=[float(getattr(c,'Color'+s)) for s in 'rgb']
     if previous is not None and np.linalg.norm(previous-p)<1.2:
         count=min(32,max(1,int(np.linalg.norm(previous-p)/(r*.3))))
         for t in np.linspace(0,1,count+1)[1:]:engine.stamp(previous*(1-t)+p*t,n,r,color,dose)
     else:engine.stamp(p,n,r,color,dose)
     return p
-def touch_event(event,down):
+def touch_event(event,down,color=None):
     key=str(event.id);u,v=float(event.u),float(event.v)
     if not down:engine.pointers.pop(key,None);return
     old=engine.pointers.get(key)
     if old is None:
         if not bool(ctrl().Rotate):engine.begin()
-        old=dict(u=float(event.downu),v=float(event.downv),point=None,rot=bool(ctrl().Rotate))
-        if not old['rot']:old['point']=paint_at(old['u'],old['v'],.018)
+        old=dict(u=float(event.downu),v=float(event.downv),point=None,rot=bool(ctrl().Rotate),color=color)
+        if not old['rot']:old['point']=paint_at(old['u'],old['v'],.018,color=color)
     if old['rot']:
         ctrl().Yaw=float(ctrl().Yaw)-(u-old['u'])*220;ctrl().Pitch=float(ctrl().Pitch)-(v-old['v'])*100
-    else:old['point']=paint_at(u,v,.018,old['point'])
+    else:old['point']=paint_at(u,v,.018,old['point'],old['color'])
     old['u']=u;old['v']=v;engine.pointers[key]=old
 def tick():
     global previous_time,last_upload,last_right
@@ -198,7 +199,7 @@ def tick():
         last_right=uv;engine.pointers.clear()
     else:last_right=None
     for contact in list(engine.pointers.values()):
-        if not contact['rot'] and not right:contact['point']=paint_at(contact['u'],contact['v'],dt,contact['point'])
+        if not contact['rot'] and not right:contact['point']=paint_at(contact['u'],contact['v'],dt,contact['point'],contact['color'])
     engine.advance(dt)
     if engine.dirty and now-last_upload>1/30:
         op(V+'/paint_color').cook(force=True);op(V+'/wetness_height').cook(force=True);op(V+'/paint_emission').cook(force=True)

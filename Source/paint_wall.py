@@ -9,11 +9,11 @@ styles=op('/master/style_tools').module
 PALETTE=op('/master/version_5_car/paint_engine').module.PALETTE
 
 class WallPaint(Base):
-    def __init__(self,restore=True):
+    def __init__(self,saved=None,mask=None):
         self.glow=np.zeros((640,1024),np.float32);self.mass=np.zeros_like(self.glow);self.wet=np.zeros_like(self.glow)
         self.undo=[];self.phase=0.;self.style=0
+        self.mask=mask
         super().__init__()
-        saved=op(V).storage.get('saved_paint') if restore else None
         if saved:
             data=np.load(io.BytesIO(base64.b64decode(saved)),allow_pickle=False)
             for name in ('ink','glow','mass','wet'):
@@ -28,9 +28,13 @@ class WallPaint(Base):
         super().clear();self.glow.fill(0);self.mass.fill(0);self.wet.fill(0)
     def undo_stroke(self):
         if self.undo:self.ink,self.glow,self.mass,self.wet=self.undo.pop();self.pointers={};self.drops=[];self.dirty=True
-    def pointer(self,identifier,u,v,down,pressure=1):
-        if down and str(identifier) not in self.pointers:self.begin()
-        super().pointer(identifier,u,v,down,pressure)
+    def pointer(self,identifier,u,v,down,pressure=1,color=None):
+        if down and str(identifier) not in self.pointers:
+            if self.mask is not None:
+                if not (0<=u<=1 and 0<=v<=1):return
+                if not self.mask[round(v*639),round(u*1023)]:return
+            self.begin()
+        super().pointer(identifier,u,v,down,pressure,color)
     def add_drop(self,p):
         runs=styles.preset(self.style)[3]
         if not self.dripping or runs<=0:return
@@ -48,6 +52,8 @@ class WallPaint(Base):
         profile,col=styles.brush(style,(xx-x)/r,(yy-y)/r,color,self.rng,self.phase)
         gain,emission,relief,runs=styles.preset(style)
         if not drip:self.phase=(self.phase+.008)%1
+        if self.mask is not None:
+            profile=profile*self.mask[y0:y1,x0:x1]
         alpha=(1-np.exp(-dose*profile*gain)).astype(np.float32)
         region=self.ink[y0:y1,x0:x1];a=alpha[...,None]
         region[:,:,:3]=col*a+region[:,:,:3]*(1-a);region[:,:,3]=alpha+region[:,:,3]*(1-alpha)
@@ -61,7 +67,38 @@ class WallPaint(Base):
     def surface_image(self):
         a=np.zeros((640,1024,4),np.float32);a[:,:,0]=self.glow;a[:,:,1]=self.mass;a[:,:,2]=self.wet;a[:,:,3]=1;return a
 
-engine=WallPaint();previous_time=time.perf_counter();button_states={}
+saved_surfaces=op(V).storage.get('saved_surfaces',{})
+engine=WallPaint(saved_surfaces.get('image',op(V).storage.get('saved_paint')))
+surfaces={'image':engine}
+previous_time=time.perf_counter();button_states={}
+
+def select_surface(key,mask_top=None):
+    global engine
+    if key not in surfaces:
+        mask=None
+        if mask_top is not None:
+            pixels=mask_top.numpyArray(delayed=False)[:,:,0]
+            rows=np.rint(np.linspace(0,pixels.shape[0]-1,640)).astype(int)
+            columns=np.rint(np.linspace(0,pixels.shape[1]-1,1024)).astype(int)
+            mask=pixels[np.ix_(rows,columns)]>.5
+        surfaces[key]=WallPaint(saved_surfaces.get(key),mask)
+    if engine is not surfaces[key]:
+        engine.drops.clear()
+        engine=surfaces[key]
+        engine.dirty=True
+
+def save_surfaces():
+    saved=saved_surfaces.copy()
+    for key,surface in surfaces.items():
+        if not surface.ink.any():
+            saved.pop(key,None)
+            continue
+        buf=io.BytesIO()
+        np.savez_compressed(buf,ink=surface.ink,mass=surface.mass,glow=surface.glow,wet=surface.wet)
+        saved[key]=base64.b64encode(buf.getvalue()).decode()
+    op(V).storage['saved_surfaces']=saved
+    op(V).storage.pop('saved_paint',None)
+
 def settings():
     c=op(V+'/STYLE_CONTROLS').par
     engine.style=int(c.Style);engine.radius=float(c.Radius);engine.flow=float(c.Flow)

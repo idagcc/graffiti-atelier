@@ -57,7 +57,7 @@ class Spray:
         region[...,3]=alpha+region[...,3]*(1-alpha)
         self.dirty=True
 
-    def pointer(self,identifier,u,v,down,pressure=1.0):
+    def pointer(self,identifier,u,v,down,pressure=1.0,color=None):
         """Common input: normalized UV, bottom-left origin, contact ID and spray gate."""
         key=str(identifier)
         if not down:
@@ -82,7 +82,8 @@ class Spray:
             # ponytail: cap live contacts at ten, matching the installation's current touch scope.
             if len(self.pointers)>=10:
                 return
-            old=dict(x=x,y=y,hold=0.,travel=0.,last=now,r=self.radius,color=self.paint_color or PALETTE[self.color],pressure=pressure)
+            color = color if color is not None else self.paint_color or PALETTE[self.color]
+            old=dict(x=x,y=y,hold=0.,travel=0.,last=now,r=self.radius,color=color,pressure=pressure)
             self.pointers[key]=old
             self.stamp(x,y,old['r'],old['color'],.85*pressure)
         else:

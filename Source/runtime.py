@@ -1,5 +1,6 @@
 """5K LED RUN paint studio and unified contact router."""
 import time, math, io, base64, json
+from random import choice
 from pathlib import Path
 from datetime import datetime
 from tempfile import NamedTemporaryFile
@@ -19,9 +20,9 @@ WHITE = rgb('FFFFFF')
 MUTED = rgb('CECAE7')
 LINE = rgb('565185')
 ACCENT = PINK
-# Keep the original swatch IDs so stored settings and touch targets resolve.
-COLORS=[PINK,(1,.35,.07),INDIGO,rgb('70DCEB'),(.04,.73,.56),rgb('FFCF58'),(.24,.36,1),rgb('A2F1C7'),(1,.19,.65),WHITE,(.035,.04,.052)]
-PUBLIC_COLORS=(0,2,3,5,7,9)
+PAINT_COLORS=(PINK,INDIGO)
+ARTWORKS=(1,2,3)
+ARTWORK_ASPECT=3/2
 CALIBRATION_TARGETS=((.13,.36),(.50,.36),(.87,.36),(.13,.135),(.50,.135),(.87,.135))
 TUIO_SETTINGS=('tuio','port','flipx','flipy','swap','homography')
 held={}; contacts={}; sensor_contacts={}
@@ -31,7 +32,7 @@ calibration_samples=[]
 calibration_tap=None
 
 def appop():return op(A)
-def state():return appop().storage.setdefault('settings',dict(mode='wall',style=0,color=0,size=20,runs=True,settings=False,help=False,light=0,tuio=True,port=3333,flipx=False,flipy=True,swap=False,timeout=1.5,homography=None,image=False))
+def state():return appop().storage.setdefault('settings',dict(mode='wall',style=0,size=20,runs=True,settings=False,help=False,light=0,tuio=True,port=3333,flipx=False,flipy=True,swap=False,timeout=1.5,homography=None,image=False))
 def wall():return op(WALL+'/paint_engine').module
 def car():return op(CAR+'/paint_engine').module
 def status(text):
@@ -88,13 +89,31 @@ def fullscreen():
     if not ui.performMode:w.par.performance.pulse()
     focus_canvas()
 
+def sync_wall(s):
+    artwork=s.get('artwork',1)
+    use_artwork=not s['image']
+    app=appop()
+    app.op('background_switch').par.index=2 if use_artwork else 1
+    if use_artwork:
+        app.op('artwork_switch').par.index=artwork-1
+        app.op('artwork_mask_switch').par.index=artwork-1
+        wall().select_surface(str(artwork),app.op(f'artwork_mask{artwork}'))
+    else:
+        wall().select_surface('image')
+    show_artwork=use_artwork and s['mode']=='wall'
+    for name in ('event_display','event_export'):
+        app.op(name).par.vec0valuex=show_artwork
+    export=app.op('event_export')
+    export.par.outputresolution='custom' if show_artwork else 'useinput'
+    export.par.resolutionw=1200
+    export.par.resolutionh=800
+
 def sync():
     s=state()
     for v in [WALL,CAR]:
         c=op(v+'/STYLE_CONTROLS').par;c.Style=[0,5,1][s['style']]
     wc=op(WALL+'/STYLE_CONTROLS').par;cc=car().ctrl()
-    for c in [wc,cc]:
-        for channel,value in zip('rgb',COLORS[s['color']]):getattr(c,'Color'+channel).val=value
+    sync_wall(s)
     wc.Radius=s['size'];wc.Runs=s['runs'];wc.Relief=8.;wc.Glow=2.2;wc.Lightx=[-.7,.6,1.4][s['light']]
     cc.Size=s['size']*.004;cc.Runs=1 if s['runs'] else 0;cc.Wetroughness=.12;cc.Dryroughness=.42;cc.Drytime=35
     wall().settings()
@@ -109,9 +128,11 @@ def sync():
     for node,value in selected:
         node.par.bgcolorr,node.par.bgcolorg,node.par.bgcolorb=ACCENT if value else BUTTON
         node.par.fontcolorr,node.par.fontcolorg,node.par.fontcolorb=BACKGROUND if value else WHITE
-    for i in PUBLIC_COLORS:
-        n=appop().op('swatch'+str(i));n.par.text='●' if i==s['color'] else ''
-        n.par.fontcolorr,n.par.fontcolorg,n.par.fontcolorb=WHITE if COLORS[i]==INDIGO else BACKGROUND
+    for i in ARTWORKS:
+        node=panel.op(f'artwork{i}')
+        active=s['mode']=='wall' and not s['image'] and s.get('artwork',1)==i
+        node.par.bgcolorr,node.par.bgcolorg,node.par.bgcolorb=ACCENT if active else BUTTON
+        node.par.fontcolorr,node.par.fontcolorg,node.par.fontcolorb=BACKGROUND if active else WHITE
     panel.op('size').par.text='Size '+str(s['size'])
     panel.op('runs').par.text='Drips '+('on' if s['runs'] else 'off')
     panel.op('rotate').par.text='Orbit on' if bool(cc.Rotate) else 'Orbit off'
@@ -133,8 +154,7 @@ def action(name):
         return
     if calibrating and name!='cancel_calibration':return
     save_sensor_settings=False
-    if name.startswith('swatch'):s['color']=int(name[6:])
-    elif name.startswith('finish'):release_all();s['style']=int(name[6:])
+    if name.startswith('finish'):release_all();s['style']=int(name[6:])
     elif name in ('wall','model'):release_all();s['mode']=name
     elif name in ('settings','close_settings'):
         release_all();s['settings']=name=='settings' and not s['settings'];s['help']=False
@@ -152,7 +172,9 @@ def action(name):
     elif name=='save':save_artwork()
     elif name=='project':project.save();status('Project saved · Image, model and editable paint preserved')
     elif name=='image':load_image()
-    elif name=='remove_image':s['image']=False;appop().op('background_switch').par.index=0;status('5K LED RUN wall restored')
+    elif name.startswith('artwork'):
+        release_all();s['artwork']=int(name[7:]);s['image']=False;s['mode']='wall'
+        status(f"Graffiti artwork {s['artwork']} selected")
     elif name=='import_model':load_model()
     elif name=='restore_model':restore_model()
     elif name=='rotate':release_all();car().ctrl().Rotate=not bool(car().ctrl().Rotate)
@@ -212,8 +234,8 @@ def load_image(path=None):
     n=appop().op('background_image');n.lock=False;n.par.file=str(path);n.par.reloadpulse.pulse();n.cook(force=True)
     if n.errors():status('Image could not be loaded');return
     # Lock the decoded TOP, embedding the image into the project.
-    n.lock=True;state()['image']=True;state()['image_name']=Path(path).name
-    appop().op('background_switch').par.index=1;state()['mode']='wall';status('Wall image · '+Path(path).name);sync()
+    n.lock=True;release_all();state()['image']=True;state()['image_name']=Path(path).name
+    state()['mode']='wall';status('Wall image · '+Path(path).name);sync()
 
 def normalized(u,v):
     s=state();u,v=float(u),float(v)
@@ -262,7 +284,7 @@ def show_calibration_step(detail=None):
         color=ACCENT if index==step else BUTTON
         point.par.bgcolorr,point.par.bgcolorg,point.par.bgcolorb=color
         point.par.fontcolorr,point.par.fontcolorg,point.par.fontcolorb=(
-            BACKGROUND if index==step else COLORS[7] if index<step else MUTED
+            BACKGROUND if index==step else WHITE if index<step else MUTED
         )
         point.par.text='✓' if index<step else '+'
 
@@ -330,6 +352,11 @@ def tuio(events):
                 u,v=calibrated(t.u,t.v)
                 contact('tuio:'+str(t.id),u,v,kind!='end',screen=True,allow_start=kind=='start')
 
+def artwork_uv(u,v,canvas):
+    aspect=canvas.width/max(1,canvas.height)
+    return ((u-.5)*max(1,aspect/ARTWORK_ASPECT)+.5,
+            (v-.5)*max(1,ARTWORK_ASPECT/aspect)+.5)
+
 def contact(identifier,u,v,down,screen=False,allow_start=True):
     s=state();now=time.perf_counter()
     if not all(math.isfinite(float(x)) for x in (u,v)):down=False
@@ -341,23 +368,25 @@ def contact(identifier,u,v,down,screen=False,allow_start=True):
     if old is None:
         if not allow_start or len(contacts)>=10:return
         if screen:
-            # Capture a contact to its initial UI target; a color tap never turns into a stroke.
+            # Capture a contact to its initial target so a button press cannot paint.
             target=hit(u,v)
             if target and target!='canvas':
                 action(target);contacts[identifier]=dict(target=target,time=now);return
             if target!='canvas':return
         if s['settings'] or s['help'] or calibrating:return
-        old=dict(target='canvas',mode=s['mode'],time=now,u=u,v=v);contacts[identifier]=old
+        old=dict(target='canvas',mode=s['mode'],time=now,color=choice(PAINT_COLORS));contacts[identifier]=old
     old['time']=now
     if old['target']!='canvas':return
+    c=appop().op('canvas')
     if screen:
-        c=appop().op('canvas');u=(u*appop().width-float(c.par.x))/c.width;v=(v*appop().height-float(c.par.y))/c.height
+        u=(u*appop().width-float(c.par.x))/c.width;v=(v*appop().height-float(c.par.y))/c.height
+    if old['mode']=='wall' and not s['image']:
+        u,v=artwork_uv(u,v,c)
     if not (0<=u<=1 and 0<=v<=1):
         wall().engine.pointer(identifier,0,0,False);car().engine.pointers.pop(identifier,None);return
-    if old['mode']=='wall':wall().engine.pointer(identifier,u,v,True)
+    if old['mode']=='wall':wall().engine.pointer(identifier,u,v,True,color=old['color'])
     else:
-        e=SimpleNamespace(id=identifier,u=u,v=v,downu=u,downv=v);car().touch_event(e,True)
-    old['u']=u;old['v']=v
+        e=SimpleNamespace(id=identifier,u=u,v=v,downu=u,downv=v);car().touch_event(e,True,color=old['color'])
 
 def hit(u,v):
     x,y=u*appop().width,v*appop().height
@@ -432,7 +461,7 @@ def tick():
     if wall().engine.dirty:
         op(WALL+'/paint_color').cook(force=True);op(WALL+'/paint_surface').cook(force=True);wall().engine.dirty=False
     for p in list(car().engine.pointers.values()):
-        if not p['rot']:p['point']=car().paint_at(p['u'],p['v'],dt,p['point'])
+        if not p['rot']:p['point']=car().paint_at(p['u'],p['v'],dt,p['point'],p['color'])
     car().engine.advance(dt)
     if car().engine.dirty and s['mode']=='model':
         for n in ['paint_color','wetness_height','paint_emission']:op(CAR+'/'+n).cook(force=True)
@@ -450,8 +479,6 @@ def start():
     calibrating=False;calibration_tap=None;previous=time.perf_counter()
     s=state()
     s['settings']=s['help']=False
-    if s['color'] not in PUBLIC_COLORS:
-        s['color']=min(PUBLIC_COLORS,key=lambda index:math.dist(COLORS[index],COLORS[s['color']]))
     load_calibration();sync()
     run("op('/atelier/runtime').module.fullscreen()",delayFrames=12)
 

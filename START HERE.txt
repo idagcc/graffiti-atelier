@@ -6,13 +6,17 @@ The app opens fullscreen. It needs TouchDesigner installed and licensed.
 The event edition uses TouchDesigner 2025.33230.
 
 PAINT
-The app opens fullscreen on the branded digital game wall with neon pink selected.
-Pick one of six colors along the bottom and drag to paint. Hold to build coverage.
+The app opens fullscreen on Graffiti Artwork 1. Touch and drag to paint.
+Each new touch randomly picks Pantone 232 C (pink) or Pantone 2118 C
+(indigo). The touch keeps that color until you lift, including when
+several people paint at once. Hold to build coverage.
+On the three graffiti artworks, paint stays in the enclosed white areas.
 Select Clear All at the bottom right to reset the canvas. Press Z to undo.
 The bundled 3D car is still available in Settings.
 
 OPERATOR SETTINGS
-Press Tab to open the hidden Settings panel. Choose Wall or 3D object,
+Press Tab to open the hidden Settings panel. Choose Artwork 1, 2, or 3
+to switch designs. Each design keeps its own painting. Choose Wall or 3D object,
 adjust brush size, switch spray, wet paint, neon, or drips, adjust lighting,
 import a surface, or set up LiDAR. Select Done or press Esc to return.
 Select Exit App in Settings to close 5K LED RUN.
@@ -47,8 +51,8 @@ Mouse, native OS touch and TUIO can drive the app. Undo is in Settings.
 
 CUSTOM IMAGES AND MODELS
 The image is fitted to the 1024 x 640 wall. Saving the project embeds it.
-Loading an image keeps your existing paint; clear the surface if desired.
-Use Restore event wall to return to the 5K LED RUN artwork.
+Custom images share a separate paint surface. Use Artwork 1, 2, or 3
+to return to a graffiti design.
 
 Replacement models must be OBJ, with unique, non-overlapping UV islands packed
 in 0–1, a Y-up orientation, and at most 150,000 triangles. The model is centered
@@ -87,7 +91,7 @@ LiDAR Calibration.json next to the project.
 SLAMTEC FrameGrabber.NET toolkit and documentation:
 https://wiki.slamtec.com/pages/viewpage.action?pageId=128090141
 
-A TUIO contact stays attached to its initial target, so a swatch tap cannot
+A TUIO contact stays attached to its initial target, so a button press cannot
 become a paint stroke. Up to ten simultaneous paint contacts are accepted.
 Contacts stop on release. Lost sensor contacts expire after 1.5 seconds
 without updates. Stationary contacts should continue to be included in
@@ -95,11 +99,12 @@ tracker frames.
 
 SAVE AND EXPORT
 EXPORT / S writes to the Exports folder beside the open project:
-  Wall: branded PNG + editable .npz paint arrays
+  Graffiti artwork: 1200 x 800 PNG + editable .npz paint arrays
+  Custom wall image: branded PNG + editable .npz paint arrays
   Model: branded PNG + paint texture PNG + editable .npz paint arrays
 The .npz files are source data for further work, not a gallery import format.
 
-Save project / Ctrl+S / Cmd+S embeds both surfaces' paint, the current wall
+Save project / Ctrl+S / Cmd+S embeds every surface's paint, the custom wall
 image, replacement model, and current settings into a numbered .toe revision.
 Open that latest revision to continue where you left off. The adjacent LiDAR
 Calibration.json takes priority for sensor settings on this installation.
@@ -111,7 +116,8 @@ EDITING
 /master/version_5_car holds the embedded car, surface picking, paint atlas,
 material, studio lights and render.
 /master/STYLE_PRESETS controls shared dose, emission, relief and runs.
-Source/Brand contains the game wall and event logos embedded in the project.
+Source/Brand contains the three graffiti designs, their paint masks, and the
+event images embedded in the project.
 Source contains readable copies of the embedded scripts, the wall shader
 and the TouchDesigner interface build script.
 The application runs from the .toe without the Source folder.
